@@ -1,35 +1,36 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Document</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
-    crossorigin=""/>
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
-    crossorigin=""></script>
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <style>
-        #map { height: 100vh; }
+        #map {
+            height: 100vh;
+        }
     </style>
 </head>
+
 <body>
     <p>please type in a sequence of years to filter the data</p>
     <input id="years"></input>
     <button id="submit">Submit</button>
     <div id="map"></div>
-    
+
 
     <script>
 
-        
-        var map = L.map('map').setView([39.75621 , -104.99404 ], 13);
+        var map = L.map('map').setView([39.75621, -104.99404], 13);
         L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-    attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-}).addTo(map);
-let geojsonFeatureTemplate = {
+            maxZoom: 19,
+            attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        }).addTo(map);
+        let geojsonFeatureTemplate = {
             "type": "Feature",
             "properties": {
                 "name": "Coors Field",
@@ -42,51 +43,68 @@ let geojsonFeatureTemplate = {
             }
         };
 
-//make a list of others that have a specific coordinate shifted 
+        //make a list of others that have a specific coordinate shifted 
+        let geolayer = L.geoJSON()
+        let geojsonFeature = []
+        for (let i = 0; i < 200; i++) {
+            // making a deep copy so no elements in the feature array share modifications
 
-let geojsonFeature = []
-for(let i =0; i < 200;i++) {
-    // making a deep copy so no elements in the feature array share modifications
+            let newFeature = JSON.parse(JSON.stringify(geojsonFeatureTemplate))
+            newFeature.geometry.coordinates[0] += Math.random() * .2 - .1
+            newFeature.geometry.coordinates[1] += Math.random() * .2 - .1
+            // add a fake year property to filter on
+            newFeature.properties.year = Math.floor(Math.random() * 24) + 2000
+            geojsonFeature.push(newFeature)
+            //console.log(newFeature.geometry.coordinates)
+        }
+        function performFilterDrawMap(yearstring) {
+            // get rid of the previous marks layer
+            map.removeLayer(geolayer)
+            // remove any white space that could cause problems
+            let yearstring_no_whitespace = yearstring.replace(/\s/g, "")
+            // split the year string on a comma
+            let yearstring_1 = yearstring_no_whitespace.split(/,/g)
+            // now for each part if it contains a - we need to make years within that range
+            let yearstring_2 = yearstring_1.map(ysPart => {
+                // here we split on the dash
+                let [start, end] = ysPart.split(/-/g).map(year => parseInt(year))
+                // if we didn't get a dash part we need to just return the single number
+                if (end == undefined) {
+                    return start
+                }
+                if (start == undefined) {
+                    return end
+                }
+                return Array.from({ length: end - start }, (e, i) => start + i)
+            })
+            console.log(yearstring_2)
+            let years = yearstring_2.flat()
+            console.log(years)
+            console.log(geojsonFeature)
+            // perform the filtering on the feature array
+            let matchingFeatures = geojsonFeature.filter(e => {
+                // here we will return true or false whether the element should pass the filter
+                return years.includes(e.properties.year)
+            })
+            console.log(matchingFeatures)
+            // add the layer to our global varioable used to clear
+            geolayer = L.geoJSON(matchingFeatures)
+            // put it on the map now
+            geolayer.addTo(map);
+        }
+        // get the submit button reference
+        // get the text element reference
+        let te =document.querySelector("#years")
+        let btn = document.querySelector("#submit")
+        // make a function that sends the text elements value into the year filter map draw function
+        btn.onclick = ()=> {
+            let yearstring = te.value
+            performFilterDrawMap(yearstring)
+        }
 
-    let newFeature = JSON.parse(JSON.stringify( geojsonFeatureTemplate))
-    newFeature.geometry.coordinates[0]+= Math.random()*.2-.1
-    newFeature.geometry.coordinates[1]+= Math.random()*.2-.1
-    // add a fake year property to filter on
-    newFeature.properties.year = Math.floor(Math.random()*24) + 2000
-    geojsonFeature.push(newFeature)
-    //console.log(newFeature.geometry.coordinates)
-}
-let yearstring = "2021,2004-2008"
-// remove any white space that could cause problems
-let yearstring_no_whitespace = yearstring.replace(/\s/g,"")
-// split the year string on a comma
-let yearstring_1 = yearstring_no_whitespace.split(/,/g)
-// now for each part if it contains a - we need to make years within that range
-let yearstring_2 = yearstring_1.map(ysPart => {
-    // here we split on the dash
-    let [start,end] = ysPart.split(/-/g).map(year=> parseInt(year))
-    // if we didn't get a dash part we need to just return the single number
-    if (end == undefined){
-        return start
-    }
-    if (start == undefined) {
-        return end
-    }
-    return Array.from({length:end-start},(e,i)=> start+i)
-})
-console.log(yearstring_2)
-let years = yearstring_2.flat()
-console.log(years)
-console.log(geojsonFeature)
-// perform the filtering on the feature array
-let matchingFeatures = geojsonFeature.filter(e=> {
-    // here we will return true or false whether the element should pass the filter
-    return years.includes(e.properties.year) 
-})
-console.log(matchingFeatures)
-L.geoJSON(matchingFeatures).addTo(map);
 
     </script>
-    
+
 </body>
+
 </html>
