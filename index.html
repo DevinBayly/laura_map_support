@@ -56,9 +56,35 @@ for(let i =0; i < 200;i++) {
     geojsonFeature.push(newFeature)
     //console.log(newFeature.geometry.coordinates)
 }
-let yearstring = ""
+let yearstring = "2021,2004-2008"
+// remove any white space that could cause problems
+let yearstring_no_whitespace = yearstring.replace(/\s/g,"")
+// split the year string on a comma
+let yearstring_1 = yearstring_no_whitespace.split(/,/g)
+// now for each part if it contains a - we need to make years within that range
+let yearstring_2 = yearstring_1.map(ysPart => {
+    // here we split on the dash
+    let [start,end] = ysPart.split(/-/g).map(year=> parseInt(year))
+    // if we didn't get a dash part we need to just return the single number
+    if (end == undefined){
+        return start
+    }
+    if (start == undefined) {
+        return end
+    }
+    return Array.from({length:end-start},(e,i)=> start+i)
+})
+console.log(yearstring_2)
+let years = yearstring_2.flat()
+console.log(years)
 console.log(geojsonFeature)
-        L.geoJSON(geojsonFeature).addTo(map);
+// perform the filtering on the feature array
+let matchingFeatures = geojsonFeature.filter(e=> {
+    // here we will return true or false whether the element should pass the filter
+    return years.includes(e.properties.year) 
+})
+console.log(matchingFeatures)
+L.geoJSON(matchingFeatures).addTo(map);
 
     </script>
     
